@@ -1,0 +1,68 @@
+[project]
+name = "jlog"
+version = "0.1.0"
+description = "CLI to interstitial journal."
+readme = "README.md"
+requires-python = ">=3.14"
+license = "MIT"
+authors = [{ name = "arlecchino", email = "miscellaneous2020@outlook.com" }]
+maintainers = [{ name = "arlecchino", email = "miscellaneous2020@outlook.com" }]
+dependencies = [
+  "platformdirs>=4.9.4",
+  "pydantic>=2.13.4",
+  "pydantic-settings>=2.14.2",
+  "ruamel-yaml>=0.19.1",
+]
+
+[project.scripts]
+jlog = "jlog.cli:main"
+
+[dependency-groups]
+dev = [
+  "pre-commit",
+  { include-group = "lint" },
+  { include-group = "test" },
+  { include-group = "typecheck" },
+]
+lint = ["ruff"]
+test = ["pytest"]
+typecheck = ["basedpyright"]
+
+[build-system]
+requires = ["uv_build>=0.10.9,<0.11.0"]
+build-backend = "uv_build"
+
+# Reference: https://microsoft.github.io/pyright/#/configuration
+[tool.basedpyright]
+venvPath = "."
+venv = ".venv"
+reportMissingImports = true
+pythonVersion = "3.14"
+pythonPlatform = "Linux"
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+respect-gitignore = true
+
+[tool.ruff.lint]
+preview = true
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+extend-safe-fixes = ["E"]
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"
+
+[tool.ruff.format]
+preview = true
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"
+
+[tool.uv]
+package = true
+resolution = "highest"
