@@ -1,4 +1,7 @@
 import argparse
+import sys
+from collections.abc import Sequence
+from typing import override
 
 CLI_DESCRIPTION = "CLI to interstitial journal."
 
@@ -36,7 +39,14 @@ class LicenseAction(argparse.Action):
     Define Action for flag -l and --license.
     """
 
-    def __call__(self, parser, namespace, values, option_string=None):
+    @override
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values: object,
+        option_string: str | None = None,
+    ) -> None:
         print(LICENSE_TEXT)
         parser.exit()
 
@@ -52,7 +62,7 @@ def create_arg_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawTextHelpFormatter,
     )
 
-    parser.add_argument(
+    _ = parser.add_argument(
         "-l",
         "--license",
         action=LicenseAction,
@@ -60,7 +70,31 @@ def create_arg_parser() -> argparse.ArgumentParser:
         help="Show license information and exit",
     )
     verbosity_group = parser.add_mutually_exclusive_group()
-    verbosity_group.add_argument("-q", "--quiet", help="Use quiet output", action="store_true")
-    verbosity_group.add_argument("-v", "--verbose", help="Use verbose output", action="store_true")
+    _ = verbosity_group.add_argument("-q", "--quiet", help="Use quiet output", action="store_true")
+    _ = verbosity_group.add_argument("-v", "--verbose", help="Use verbose output", action="store_true")
 
     return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """
+    Run the jlog command-line interface.
+
+    This function is executed when you type `jlog` or `python -m jlog`.
+    """
+
+    parser = create_arg_parser()
+    parsed_args = parser.parse_args(args=argv)
+
+    # The following distinction is needed for testing:
+    # - main() tests normal process behavior.
+    # - main([]) tests deliberately running with no arguments.
+    # - main(["--help"]) tests a specific argument sequence without changing global state.
+    #   This is a common dependency-injection technique - command-line input is passed into the function instead of always being read from global state.
+    arguments = list(argv) if argv is not None else sys.argv[1:]
+
+    if not arguments:
+        parser.print_help()
+        return 0
+
+    return 0

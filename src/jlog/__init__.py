@@ -1,3 +1,3 @@
-"""jlog package"""
-
-__version__ = "0.1.0"
+"""
+A command-line application for interstitial journaling.
+"""
