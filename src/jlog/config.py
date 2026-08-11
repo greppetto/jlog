@@ -71,10 +71,10 @@ class Settings(BaseSettings):
             raise ValueError("Daily notes folder must not refer to the vault root.")
 
         if path.is_absolute():
-            raise ValueError("Daily folder must be relative to the vault.")
+            raise ValueError("Daily notes folder must be relative to the vault.")
 
         if ".." in path.parts:
-            raise ValueError("Daily folder must not contain parent directory references.")
+            raise ValueError("Daily notes folder must not contain parent directory references.")
 
         return path
 

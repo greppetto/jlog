@@ -141,3 +141,111 @@ def test_settings_rejects_blank_explicit_vault_path() -> None:
 
     with pytest.raises(ValidationError, match="Vault path must not be empty."):
         Settings(vault_path=" ")  # pyright: ignore[reportArgumentType]
+
+
+def test_daily_folder_defaults_to_logs_daily(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    The settings object should default to "1. Logs/Daily for daily folder."
+    """
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("JLOG_DAILY_FOLDER", raising=False)
+
+    settings = Settings(vault_path=tmp_path)
+
+    assert settings.daily_folder == Path("1. Logs/Daily")
+
+
+def test_daily_folder_loads_from_environment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    The settings object should load daily folder from the environment, if present."
+    """
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("JLOG_DAILY_FOLDER", "Journal/Daily")
+
+    settings = Settings(vault_path=tmp_path)
+
+    assert settings.daily_folder == Path("Journal/Daily")
+
+
+def test_daily_folder_accepts_nested_relative_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    The settings object should load daily folder, even if it is a nested relative path."
+    """
+
+    monkeypatch.chdir(tmp_path)
+
+    settings = Settings(vault_path=tmp_path, daily_folder=Path("Journal/Daily"))
+
+    assert settings.daily_folder == Path("Journal/Daily")
+
+
+def test_daily_folder_does_not_need_to_exist(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    The settings object must not enforce existence of supplied daily folder.
+    """
+    monkeypatch.chdir(tmp_path)
+
+    daily_folder = Path("Journal/Daily")
+
+    settings = Settings(vault_path=tmp_path, daily_folder=daily_folder)
+
+    assert settings.daily_folder == daily_folder
+    assert not (tmp_path / daily_folder).exists()
+
+
+def test_daily_folder_rejects_absolute_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    The settings object must reject an absolute path as the daily folder.
+    """
+
+    monkeypatch.chdir(tmp_path)
+
+    absolute_path = tmp_path / "Daily"
+
+    with pytest.raises(ValidationError, match="Daily notes folder must be relative to the vault."):
+        Settings(vault_path=tmp_path, daily_folder=absolute_path)
+
+
+@pytest.mark.parametrize(
+    "daily_folder",
+    [
+        Path("../Daily"),
+        Path("Journal/../Daily"),
+        Path("Journal/../../Daily"),
+    ],
+)
+def test_daily_folder_rejects_parent_directory_references(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, daily_folder: Path
+) -> None:
+    """
+    THe settings object must reject if there are any parent directory references in the supplied daily folder path.
+    """
+    monkeypatch.chdir(tmp_path)
+
+    with pytest.raises(ValidationError, match="Daily notes folder must not contain parent directory references."):
+        Settings(vault_path=tmp_path, daily_folder=daily_folder)
+
+
+def test_daily_folder_rejects_vault_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    The settings object must reject the vault root as the daily folder.
+    """
+
+    monkeypatch.chdir(tmp_path)
+
+    with pytest.raises(ValidationError, match="Daily notes folder must not refer to the vault root."):
+        Settings(vault_path=tmp_path, daily_folder=Path("."))
+
+
+def test_daily_folder_rejects_blank_environment_value(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    The settings object should reject if loaded environment value is blank."
+    """
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("JLOG_DAILY_FOLDER", " ")
+
+    with pytest.raises(ValidationError, match="Daily notes folder must not be empty."):
+        Settings(vault_path=tmp_path)
