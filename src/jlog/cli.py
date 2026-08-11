@@ -1,7 +1,16 @@
+"""
+Application boundary and command-line interface for jlog.
+"""
+
 import argparse
+import logging
 import sys
 from collections.abc import Sequence
 from typing import override
+
+# from jlog.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 CLI_DESCRIPTION = "CLI to interstitial journal."
 
@@ -32,6 +41,16 @@ LICENSE_TEXT = """
 
     ==============================================================================
 """
+
+
+class ParsedArguments(argparse.Namespace):
+    verbose: bool
+    quiet: bool
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.verbose = False
+        self.quiet = False
 
 
 class LicenseAction(argparse.Action):
@@ -70,10 +89,25 @@ def create_arg_parser() -> argparse.ArgumentParser:
         help="Show license information and exit",
     )
     verbosity_group = parser.add_mutually_exclusive_group()
-    _ = verbosity_group.add_argument("-q", "--quiet", help="Use quiet output", action="store_true")
-    _ = verbosity_group.add_argument("-v", "--verbose", help="Use verbose output", action="store_true")
+    verbosity_group.add_argument("-q", "--quiet", help="Suppress non-error logging", action="store_true")
+    verbosity_group.add_argument("-v", "--verbose", help="Enable verbose logging", action="store_true")
 
     return parser
+
+
+def configure_logging(*, verbose: bool, quiet: bool) -> None:
+    """
+    Configure application-wide logging.
+    """
+
+    if verbose:
+        level = logging.DEBUG
+    elif quiet:
+        level = logging.ERROR
+    else:
+        level = logging.WARNING
+
+    logging.basicConfig(filename="j.log", level=level, format="%(asctime)s - %(levelname)s:  %(message)s")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -84,7 +118,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     """
 
     parser = create_arg_parser()
-    parsed_args = parser.parse_args(args=argv)
 
     # The following distinction is needed for testing:
     # - main() tests normal process behavior.
@@ -96,5 +129,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     if not arguments:
         parser.print_help()
         return 0
+
+    parsed_args = parser.parse_args(args=argv, namespace=ParsedArguments())
+
+    configure_logging(verbose=parsed_args.verbose, quiet=parsed_args.quiet)
+
+    logger.debug("jlog started.")
+
+    # settings = get_settings()
+
+    logger.debug("Application settings loaded.")
 
     return 0

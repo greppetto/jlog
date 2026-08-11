@@ -1,6 +1,7 @@
 import os
 import threading
 from pathlib import Path
+from types import TracebackType
 
 from platformdirs import user_cache_dir, user_downloads_dir
 
@@ -22,7 +23,12 @@ class SimpleFileLock:
         self.path.write_text(f"pid:{os.getpid()}\n")
         return self
 
-    def __exit__(self, execution_type, execution_value, execution_traceback):
+    def __exit__(
+        self,
+        execution_type: type[BaseException] | None,
+        execution_value: type[BaseException] | None,
+        execution_traceback: TracebackType,
+    ):
         try:
             if self.path.exists():
                 try:

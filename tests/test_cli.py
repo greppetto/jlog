@@ -2,9 +2,15 @@
 Smoke tests for the installed jlog command.
 """
 
+# import argparse
+import logging
 import shutil
 import subprocess
 from collections.abc import Sequence
+
+import pytest
+
+from jlog.cli import configure_logging
 
 
 def run_jlog(arguments: Sequence[str] = ()) -> subprocess.CompletedProcess[str]:
@@ -67,3 +73,67 @@ def test_no_arguments_displays_help() -> None:
     assert "usage:" in result.stdout.lower()
     assert "jlog" in result.stdout.lower()
     assert result.stderr == ""
+
+
+def test_configure_logging_rejects_verbose_and_quiet_together() -> None:
+    """
+    Verbose and quiet are mutually exclusive and should not be true at the same time.
+    """
+
+    result = run_jlog(["-v", "-q"])
+
+    assert result.returncode != 0
+    assert result.stdout == ""
+    assert "jlog" in result.stderr.lower()
+    assert "not allowed with" in result.stderr.lower()
+
+
+def test_configure_logging_default_to_warning(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Running jlog without verbose and quiet should result in logging defaulting to WARNING.
+    """
+
+    calls = {}
+
+    def fake_base_config(**kwargs):
+        calls.update(kwargs)
+
+    monkeypatch.setattr(logging, "basicConfig", fake_base_config)
+
+    configure_logging(verbose=False, quiet=False)
+
+    assert calls["level"] == logging.WARNING
+
+
+def test_configure_logging_verbose_uses_debug(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Running jlog with verbose should result in logging defaulting to DEBUG.
+    """
+
+    calls = {}
+
+    def fake_base_config(**kwargs):
+        calls.update(kwargs)
+
+    monkeypatch.setattr(logging, "basicConfig", fake_base_config)
+
+    configure_logging(verbose=True, quiet=False)
+
+    assert calls["level"] == logging.DEBUG
+
+
+def test_configure_logging_quiet_uses_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Running jlog with quiet should result in logging defaulting to ERROR.
+    """
+
+    calls = {}
+
+    def fake_base_config(**kwargs):
+        calls.update(kwargs)
+
+    monkeypatch.setattr(logging, "basicConfig", fake_base_config)
+
+    configure_logging(verbose=False, quiet=True)
+
+    assert calls["level"] == logging.ERROR
