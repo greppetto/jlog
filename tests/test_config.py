@@ -220,7 +220,7 @@ def test_daily_folder_rejects_parent_directory_references(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, daily_folder: Path
 ) -> None:
     """
-    THe settings object must reject if there are any parent directory references in the supplied daily folder path.
+    The settings object must reject if there are any parent directory references in the supplied daily folder path.
     """
     monkeypatch.chdir(tmp_path)
 

@@ -10,35 +10,18 @@ For example:
 Weekday names are always in English and are resolved independently of the system locale.
 """
 
-import os
-import threading
+import logging
 from datetime import date
 from pathlib import Path
-from types import TracebackType
-
-from platformdirs import user_cache_dir, user_downloads_dir
 
 from jlog.config import Settings
+from jlog.templates import render_daily_note
+from jlog.utils import get_weekday_name
 
 DEFAULT_CACHE_SUBDIRECTORY = "jlog"
-WEEKDAYS = (
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-    "Sunday",
-)
 DAILY_NOTE_FILENAME_PATTERN = "{date}-{weekday}.md"
 
-
-def get_weekday_name(day: date) -> str:
-    """
-    Return the English weekday name for a calendar date.
-    """
-
-    return WEEKDAYS[day.weekday()]
+logger = logging.getLogger(__name__)
 
 
 def get_daily_note_filename(day: date) -> str:
@@ -57,62 +40,25 @@ def get_daily_note_path(settings: Settings, day: date) -> Path:
     return settings.vault_path / settings.daily_folder / get_daily_note_filename(day)
 
 
-class SimpleFileLock:
+def ensure_daily_note(settings: Settings, day: date) -> Path:
     """
-    Cross-platform file lock.
-    """
-
-    def __init__(self, path: Path):
-        self.path = path
-        self._lock = threading.Lock()
-
-    def __enter__(self):
-        self._lock.acquire()
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(f"pid:{os.getpid()}\n")
-        return self
-
-    def __exit__(
-        self,
-        execution_type: type[BaseException] | None,
-        execution_value: type[BaseException] | None,
-        execution_traceback: TracebackType,
-    ):
-        try:
-            if self.path.exists():
-                try:
-                    self.path.unlink()
-                except Exception:
-                    pass
-        finally:
-            self._lock.release()
-
-
-def _resolve_directory(path_string: str | None, default: Path) -> Path:
-    if path_string:
-        try:
-            path = Path(path_string).expanduser().resolve()
-            path.mkdir(parents=True, exist_ok=True)
-            return path
-        except TypeError, ValueError, OSError:
-            pass
-    default.mkdir(parents=True, exist_ok=True)
-    return default
-
-
-def resolve_output_directory(output_directory: str | None = None) -> Path:
-    """
-    Figures out where to place the output files.
+    Ensure that a daily note exists and return its path.
     """
 
-    default = Path(user_downloads_dir())
-    return _resolve_directory(output_directory, default)
+    note_path = get_daily_note_path(settings, day)
 
+    note_path.parent.mkdir(parents=True, exist_ok=True)
 
-def resolve_cache_directory(cache_directory: str | None = None) -> Path:
-    """
-    Figures out where to place the cache files.
-    """
+    document = render_daily_note(day)
 
-    default = Path(user_cache_dir())
-    return _resolve_directory(cache_directory, default)
+    try:
+        with note_path.open(
+            mode="x", encoding="utf-8", newline="\n"
+        ) as file:  # mode="x" is exclusive creation (creates if file doesn't exist, raises if it does).
+            file.write(document)
+    except FileExistsError:
+        logger.debug("Daily note already exists: %s", note_path)
+    else:
+        logger.debug("Created daily note: %s", note_path)
+
+    return note_path
