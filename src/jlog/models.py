@@ -2,22 +2,12 @@
 Pydantic models used by jlog.
 """
 
-from datetime import date
+from datetime import date as Date
 from typing import Literal
 
-from pydantic import BaseModel, Field, computed_field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 from jlog.utils import get_weekday_name
-
-WEEKDAYS = (
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-    "Sunday",
-)
 
 
 class Frontmatter(BaseModel):
@@ -25,7 +15,7 @@ class Frontmatter(BaseModel):
     Metadata for a daily journal note.
     """
 
-    date: date
+    date: Date
     type: Literal["daily"] = "daily"
     alias: str | None = None
     rating: int | None = Field(default=None, ge=1, le=10)
@@ -73,7 +63,7 @@ class Frontmatter(BaseModel):
 
     @computed_field
     @property
-    def journal_date(self) -> date:
+    def journal_date(self) -> Date:
         """
         Return the journal date.
         """
@@ -82,7 +72,7 @@ class Frontmatter(BaseModel):
 
     @computed_field
     @property
-    def journal_start_date(self) -> date:
+    def journal_start_date(self) -> Date:
         """
         Return the start date of this daily journal period.
         """
@@ -91,9 +81,36 @@ class Frontmatter(BaseModel):
 
     @computed_field
     @property
-    def journal_end_date(self) -> date:
+    def journal_end_date(self) -> Date:
         """
         Return the end date of this daily journal period.
         """
 
         return self.date
+
+
+class ExistingFrontmatter(BaseModel):
+    """
+    Validated jlog metadata read from existing frontmatter.
+    """
+
+    model_config = ConfigDict(extra="ignore", frozen=True)
+
+    date: Date | None = None
+    type: Literal["daily"] | None = None
+    alias: str | None = None
+    rating: int | None = Field(default=None, ge=1, le=5)
+    journal: Literal["daily"] | None = None
+
+    @field_validator("alias")
+    @classmethod
+    def normalize_alias(cls, value: str | None) -> str | None:
+        """
+        Normalize an optional day alias.
+        """
+
+        if value is None:
+            return None
+
+        value = value.strip()
+        return value or None

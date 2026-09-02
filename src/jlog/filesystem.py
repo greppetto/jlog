@@ -11,8 +11,11 @@ Weekday names are always in English and are resolved independently of the system
 """
 
 import logging
+import os
+import stat
 from datetime import date
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 from jlog.config import Settings
 from jlog.templates import render_daily_note
@@ -62,3 +65,35 @@ def ensure_daily_note(settings: Settings, day: date) -> Path:
         logger.debug("Created daily note: %s", note_path)
 
     return note_path
+
+
+def replace_text_atomically(path: Path, document: str) -> None:
+    """
+    Atomically replace an existing text file with new contents.
+    """
+
+    original_mode = stat.S_IMODE(path.stat().st_mode)
+
+    temporary_path: Path | None = None
+
+    try:
+        with NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            newline="",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as temporary_file:
+            temporary_path = Path(temporary_file.name)
+
+            temporary_file.write(document)
+            temporary_file.flush()
+            os.fsync(temporary_file.fileno())
+
+        temporary_path.chmod(original_mode)
+        os.replace(temporary_path, path)
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)

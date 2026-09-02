@@ -6,6 +6,8 @@ from datetime import date
 from io import StringIO
 
 from ruamel.yaml import YAML
+from ruamel.yaml.nodes import ScalarNode
+from ruamel.yaml.representer import BaseRepresenter
 
 from jlog.models import Frontmatter
 from jlog.utils import get_weekday_name
@@ -13,6 +15,10 @@ from jlog.utils import get_weekday_name
 
 def ignore_yaml_aliases(_: object) -> bool:
     return True
+
+
+def represent_none(representer: BaseRepresenter, _: object) -> ScalarNode:
+    return representer.represent_scalar("tag:yaml.org,2002:null", "")  # pyright: ignore[reportUnknownMemberType]
 
 
 def serialize_frontmatter(frontmatter: Frontmatter) -> str:
@@ -38,6 +44,7 @@ def serialize_frontmatter(frontmatter: Frontmatter) -> str:
     yaml.default_flow_style = False
     yaml.indent(mapping=2, sequence=4, offset=2)
     yaml.representer.ignore_aliases = ignore_yaml_aliases
+    yaml.representer.add_representer(type(None), represent_none)
 
     stream = StringIO()
     yaml.dump(data, stream)  # pyright: ignore[reportUnknownMemberType]
@@ -57,7 +64,6 @@ def render_daily_note(day: date) -> str:
         "---\n"
         f"{frontmatter_text}"
         "---\n"
-        "\n"
         f"# {day.isoformat()}-{get_weekday_name(day)}\n"
         "\n"
         "## Logs\n"
@@ -68,6 +74,3 @@ def render_daily_note(day: date) -> str:
         "\n"
         "### Tomorrow\n"
     )
-
-
-print(render_daily_note(date(2026, 8, 12)))
