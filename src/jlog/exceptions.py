@@ -17,3 +17,9 @@ class FrontmatterError(FormatterError):
     """
     Raised when a markdown document contains invalid frontmatter structure.
     """
+
+
+class MarkdownError(FormatterError):
+    """
+    Raised when a markdown document contains invalid body structure.
+    """

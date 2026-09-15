@@ -2,7 +2,7 @@
 Orchestration of operations on daily journal notes.
 """
 
-from datetime import date
+from datetime import date, time
 from pathlib import Path
 
 from jlog.config import Settings
@@ -17,6 +17,7 @@ from jlog.frontmatter import (
     set_frontmatter_rating,
     validate_known_frontmatter,
 )
+from jlog.markdown import format_log_entry, insert_log_entry
 
 
 class _Unset:
@@ -61,5 +62,35 @@ def update_daily_note(
 
     if updated_document != document:
         replace_text_atomically(note_path, updated_document)
+
+    return note_path
+
+
+def append_daily_log(settings: Settings, day: date, timestamp: time, message: str) -> Path:
+    """
+    Append a timestamped log entry to an existing daily note.
+    """
+
+    entry = format_log_entry(timestamp, message)
+
+    note_path = get_daily_note_path(settings, day)
+
+    with note_path.open(mode="r", encoding="utf-8", newline="") as file:
+        document = file.read()
+
+    block = extract_frontmatter(document)
+    parsed = parse_frontmatter_yaml(block.yaml)
+    frontmatter = require_frontmatter_mapping(parsed)
+
+    validated = validate_known_frontmatter(frontmatter)
+    require_daily_note(validated, expected_date=day)
+
+    updated_body = insert_log_entry(block.body, entry)
+
+    body_start = len(document) - len(block.body)
+
+    updated_document = document[:body_start] + updated_body
+
+    replace_text_atomically(note_path, updated_document)
 
     return note_path
